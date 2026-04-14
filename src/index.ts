@@ -38,3 +38,6 @@ export { QueueModule, BullMQProvider, SyncQueueProvider } from './queue';
 export { OpenFGAModule, OpenFGAService } from './openfga';
 export { MetricsModule, MetricsController, authAttemptsTotal, wsConnectionsTotal } from './metrics';
 export { ThrottlerCacheStorage } from './throttler';
+
+// ── Utils ──
+export * from './utils';

@@ -11,4 +11,6 @@ export { PermissionGuard, CachedPermission } from './permission.guard';
 export { EmployeeGuard } from './employee.guard';
 export { FeatureFlagGuard } from './feature-flag.guard';
 export { ApiKeyGuard } from './api-key.guard';
+export { ApiKeyThrottleGuard } from './api-key-throttle.guard';
 export { OrgMemberGuard } from './org-member.guard';
+export { WorkspaceGuard } from './workspace.guard';
