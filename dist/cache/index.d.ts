@@ -1,0 +1,8 @@
+/**
+ * Copyright (c) 2026 SandBox
+ * Licensed under the MIT License.
+ * https://github.com/sandbox-it-solutions
+ */
+export { CacheModule } from './cache.module';
+export { MemoryCacheProvider } from './memory-cache.provider';
+export { RedisCacheProvider } from './redis-cache.provider';

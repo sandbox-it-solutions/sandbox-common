@@ -1,0 +1,1 @@
+{"version":3,"file":"employee-only.decorator.js","sourceRoot":"","sources":["../../src/decorators/employee-only.decorator.ts"],"names":[],"mappings":";AAAA,mDAAmD;AACnD;;;;GAIG;;;AAEH,2CAA6C;AAEhC,QAAA,iBAAiB,GAAG,cAAc,CAAC;AAEzC,MAAM,YAAY,GAAG,GAAG,EAAE,CAAC,IAAA,oBAAW,EAAC,yBAAiB,EAAE,IAAI,CAAC,CAAC;AAA1D,QAAA,YAAY,gBAA8C"}
