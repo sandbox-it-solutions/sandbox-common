@@ -1,0 +1,79 @@
+{
+  "name": "@sandbox-it-solutions/common",
+  "version": "1.0.0",
+  "description": "Shared NestJS infrastructure for SandBox microservices — Auth, Guards, Decorators, Cache, Queue, OpenFGA, Metrics",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint 'src/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' --fix",
+    "test": "jest --passWithNoTests",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sandbox-it-solutions/sandbox-common.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "author": "SandBox IT Solutions",
+  "license": "MIT",
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/passport": "^11.0.0",
+    "@nestjs/terminus": "^11.0.0",
+    "@nestjs/throttler": "^6.0.0",
+    "class-validator": "^0.14.0",
+    "express": "^5.0.0",
+    "passport-jwt": "^4.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/terminus": {
+      "optional": true
+    },
+    "@nestjs/throttler": {
+      "optional": true
+    },
+    "@nestjs/passport": {
+      "optional": true
+    },
+    "passport-jwt": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@openfga/sdk": "^0.8.0",
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.0.0",
+    "nestjs-cls": "^6.0.0",
+    "nestjs-pino": "^4.0.0",
+    "pino": "^9.0.0",
+    "prom-client": "^15.0.0"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/event-emitter": "^3.0.0",
+    "@nestjs/passport": "^11.0.0",
+    "@nestjs/terminus": "^11.0.0",
+    "@nestjs/throttler": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.0.0",
+    "class-validator": "^0.14.0",
+    "express": "^5.0.0",
+    "passport-jwt": "^4.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.0.0",
+    "typescript": "^5.7.0"
+  }
+}
