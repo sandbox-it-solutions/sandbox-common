@@ -18,30 +18,43 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MetricsController = exports.wsConnectionsTotal = exports.authAttemptsTotal = exports.httpRequestTotal = exports.httpRequestDuration = void 0;
 const common_1 = require("@nestjs/common");
 const prom_client_1 = require("prom-client");
-(0, prom_client_1.collectDefaultMetrics)({ prefix: 'sandbox_' });
-exports.httpRequestDuration = new prom_client_1.Histogram({
+let defaultsCollected = false;
+function ensureDefaults() {
+    if (!defaultsCollected) {
+        (0, prom_client_1.collectDefaultMetrics)({ prefix: 'sandbox_' });
+        defaultsCollected = true;
+    }
+}
+function getOrCreate(name, factory) {
+    const existing = prom_client_1.register.getSingleMetric(name);
+    if (existing)
+        return existing;
+    return factory();
+}
+exports.httpRequestDuration = getOrCreate('sandbox_http_request_duration_seconds', () => new prom_client_1.Histogram({
     name: 'sandbox_http_request_duration_seconds',
     help: 'HTTP request duration in seconds',
     labelNames: ['method', 'route', 'status_code'],
     buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
-});
-exports.httpRequestTotal = new prom_client_1.Counter({
+}));
+exports.httpRequestTotal = getOrCreate('sandbox_http_requests_total', () => new prom_client_1.Counter({
     name: 'sandbox_http_requests_total',
     help: 'Total HTTP requests',
     labelNames: ['method', 'route', 'status_code'],
-});
-exports.authAttemptsTotal = new prom_client_1.Counter({
+}));
+exports.authAttemptsTotal = getOrCreate('sandbox_auth_attempts_total', () => new prom_client_1.Counter({
     name: 'sandbox_auth_attempts_total',
     help: 'Total authentication attempts',
     labelNames: ['method', 'status'],
-});
-exports.wsConnectionsTotal = new prom_client_1.Counter({
+}));
+exports.wsConnectionsTotal = getOrCreate('sandbox_ws_connections_total', () => new prom_client_1.Counter({
     name: 'sandbox_ws_connections_total',
     help: 'Total WebSocket connections',
     labelNames: ['namespace'],
-});
+}));
 let MetricsController = class MetricsController {
     async getMetrics() {
+        ensureDefaults();
         return prom_client_1.register.metrics();
     }
 };
