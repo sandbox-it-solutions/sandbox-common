@@ -71,17 +71,27 @@ let GlobalAuthGuard = GlobalAuthGuard_1 = class GlobalAuthGuard extends (0, pass
             };
             return true;
         }
-        const result = super.canActivate(context);
-        if (result instanceof Promise)
-            return result;
-        if (typeof result === 'boolean')
-            return result;
-        return new Promise((resolve, reject) => {
-            result.subscribe({
-                next: (v) => resolve(v),
-                error: (e) => reject(e),
+        try {
+            const result = super.canActivate(context);
+            if (result instanceof Promise)
+                return await result;
+            if (typeof result === 'boolean')
+                return result;
+            return new Promise((resolve, reject) => {
+                result.subscribe({
+                    next: (v) => resolve(v),
+                    error: (e) => reject(e),
+                });
             });
-        });
+        }
+        catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            if (message.includes('Unknown authentication strategy')) {
+                this.logger.warn('JWT strategy not registered — rejecting request');
+                throw new common_1.UnauthorizedException('Authentication required');
+            }
+            throw err;
+        }
     }
 };
 exports.GlobalAuthGuard = GlobalAuthGuard;

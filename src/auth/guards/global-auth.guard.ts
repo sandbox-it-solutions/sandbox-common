@@ -5,7 +5,7 @@
  * https://github.com/sandbox-it-solutions
  */
 
-import { ExecutionContext, Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { ExecutionContext, Inject, Injectable, Logger, Optional, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../../decorators/public.decorator';
@@ -66,14 +66,23 @@ export class GlobalAuthGuard extends AuthGuard('jwt') {
       return true;
     }
 
-    const result = super.canActivate(context);
-    if (result instanceof Promise) return result;
-    if (typeof result === 'boolean') return result;
-    return new Promise((resolve, reject) => {
-      result.subscribe({
-        next: (v) => resolve(v),
-        error: (e: Error) => reject(e),
+    try {
+      const result = super.canActivate(context);
+      if (result instanceof Promise) return await result;
+      if (typeof result === 'boolean') return result;
+      return new Promise((resolve, reject) => {
+        result.subscribe({
+          next: (v) => resolve(v),
+          error: (e: Error) => reject(e),
+        });
       });
-    });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes('Unknown authentication strategy')) {
+        this.logger.warn('JWT strategy not registered — rejecting request');
+        throw new UnauthorizedException('Authentication required');
+      }
+      throw err;
+    }
   }
 }
