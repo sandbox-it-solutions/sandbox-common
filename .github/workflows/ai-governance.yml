@@ -1,0 +1,207 @@
+# @ai-generated — GitHub Copilot (Claude Opus 4.6)
+name: AI Code Governance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  ai-code-check:
+    name: 🔍 Code-Provenance Check
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check file watermarks
+        id: watermarks
+        run: |
+          echo "## 🏷️ Watermark Check" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          EXTENSIONS="ts tsx js jsx mjs css scss py sh svelte"
+          EXCLUDE_DIRS="node_modules|.next|dist|build|__pycache__|.git|coverage|.svelte-kit|target|migrations|generated"
+          EXCLUDE_FILES="package-lock.json|pnpm-lock.yaml|yarn.lock|.eslintrc|.prettierrc|jest.config|next-env.d.ts|vite-env.d.ts|env.d.ts"
+
+          MISSING_FILES=""
+          MISSING_COUNT=0
+          TOTAL_CHECKED=0
+
+          # Build find pattern for extensions
+          FIND_PATTERN=""
+          for ext in $EXTENSIONS; do
+            if [ -n "$FIND_PATTERN" ]; then
+              FIND_PATTERN="$FIND_PATTERN -o"
+            fi
+            FIND_PATTERN="$FIND_PATTERN -name \"*.$ext\""
+          done
+
+          # Find all source files
+          while IFS= read -r file; do
+            # Skip excluded directories
+            if echo "$file" | grep -qE "($EXCLUDE_DIRS)"; then
+              continue
+            fi
+            # Skip excluded files
+            basename_file=$(basename "$file")
+            if echo "$basename_file" | grep -qE "($EXCLUDE_FILES)"; then
+              continue
+            fi
+            # Skip minified/bundled files
+            if echo "$basename_file" | grep -qE '\.(min\.(js|css)|bundle\.js)$'; then
+              continue
+            fi
+            # Skip empty files
+            if [ ! -s "$file" ]; then
+              continue
+            fi
+
+            TOTAL_CHECKED=$((TOTAL_CHECKED + 1))
+
+            # Check first 6 lines for watermark (2 lines: @ai-generated + @provenance)
+            if ! head -6 "$file" | grep -q "@ai-generated\|@human-verified"; then
+              MISSING_FILES="$MISSING_FILES\n- \`$file\`"
+              MISSING_COUNT=$((MISSING_COUNT + 1))
+            fi
+          done < <(eval "find . -type f \( $FIND_PATTERN \)")
+
+          echo "total_checked=$TOTAL_CHECKED" >> "$GITHUB_OUTPUT"
+          echo "missing_count=$MISSING_COUNT" >> "$GITHUB_OUTPUT"
+
+          if [ "$MISSING_COUNT" -gt 0 ]; then
+            echo "### ❌ $MISSING_COUNT file(s) without watermark" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo -e "$MISSING_FILES" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "> Every source file must have a watermark comment in the first 5 lines:" >> "$GITHUB_STEP_SUMMARY"
+            echo "> \`// @ai-generated — GitHub Copilot (Claude Opus 4.6) — prompted by: Name\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "> \`// @provenance https://employee.sandbox-it.de/verify/repo/path\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "> or \`// @human-verified by: Name (YYYY-MM-DD)\`" >> "$GITHUB_STEP_SUMMARY"
+            echo ""
+            echo "::error::$MISSING_COUNT source file(s) without watermark found! See Job Summary for details."
+            exit 1
+          else
+            echo "### ✅ All $TOTAL_CHECKED files have a watermark" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Analyze commits for AI authorship
+        id: analyze
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+
+          TOTAL_COMMITS=$(git rev-list --count "$BASE".."$HEAD")
+          AI_COMMITS=$(git log "$BASE".."$HEAD" --format="%b" | grep -c "Co-authored-by:.*Copilot" || true)
+          HUMAN_COMMITS=$((TOTAL_COMMITS - AI_COMMITS))
+
+          echo "total=$TOTAL_COMMITS" >> "$GITHUB_OUTPUT"
+          echo "ai=$AI_COMMITS" >> "$GITHUB_OUTPUT"
+          echo "human=$HUMAN_COMMITS" >> "$GITHUB_OUTPUT"
+
+          if [ "$AI_COMMITS" -gt 0 ]; then
+            echo "has_ai=true" >> "$GITHUB_OUTPUT"
+            AI_PERCENT=$((AI_COMMITS * 100 / TOTAL_COMMITS))
+            echo "ai_percent=$AI_PERCENT" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_ai=false" >> "$GITHUB_OUTPUT"
+            echo "ai_percent=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          REPO="${{ github.repository }}"
+
+          if [ "${{ steps.analyze.outputs.has_ai }}" = "true" ]; then
+            gh pr edit "$PR_NUMBER" --repo "$REPO" \
+              --add-label "🤖 ai-generated" \
+              --add-label "⏳ needs-human-review" \
+              --remove-label "👤 human-written" 2>/dev/null || true
+          else
+            gh pr edit "$PR_NUMBER" --repo "$REPO" \
+              --add-label "👤 human-written" \
+              --remove-label "🤖 ai-generated" \
+              --remove-label "⏳ needs-human-review" 2>/dev/null || true
+          fi
+
+      - name: Post review checklist
+        if: steps.analyze.outputs.has_ai == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const total = ${{ steps.analyze.outputs.total }};
+            const ai = ${{ steps.analyze.outputs.ai }};
+            const human = ${{ steps.analyze.outputs.human }};
+            const pct = ${{ steps.analyze.outputs.ai_percent }};
+
+            const marker = '<!-- ai-governance-bot -->';
+
+            const body = `${marker}
+            ## 🤖 AI Code Governance Report
+
+            | Metric | Value |
+            |--------|-------|
+            | Total commits | **${total}** |
+            | AI-generated (Copilot) | **${ai}** (${pct}%) |
+            | Human-written | **${human}** |
+
+            ### ✅ Review Checklist for AI-Generated Code
+
+            Please check the following points before applying the \`✅ human-verified\` label:
+
+            - [ ] **Logic**: Is business logic correct and as expected?
+            - [ ] **Security**: No hardcoded secrets, SQL injection, or XSS?
+            - [ ] **GDPR**: No unprotected personal data?
+            - [ ] **Tests**: Are tests present and meaningful?
+            - [ ] **Performance**: No N+1 queries or unnecessary re-renders?
+            - [ ] **Edge Cases**: Error handling, empty data, boundary values?
+            - [ ] **Dependencies**: No unnecessary or insecure dependencies?
+
+            > ℹ️ After review: Remove label \`⏳ needs-human-review\` and apply \`✅ human-verified\`.
+            > Alternatively: Complete the PR review with "Approve".`;
+
+            // Check for existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Summary
+        run: |
+          echo "## 🔍 AI Code Governance" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Total commits | **${{ steps.analyze.outputs.total }}** |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| AI-generated | **${{ steps.analyze.outputs.ai }}** (${{ steps.analyze.outputs.ai_percent }}%) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Human-written | **${{ steps.analyze.outputs.human }}** |" >> "$GITHUB_STEP_SUMMARY"
