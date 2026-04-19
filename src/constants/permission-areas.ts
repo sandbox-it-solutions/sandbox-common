@@ -40,9 +40,8 @@ export const VALID_AREAS = [
   'customer-portal',
   'onboarding',
   // Monitoring
-  'grafana-dashboards',
-  'grafana-alerting',
-  'grafana-datasources',
+  'prometheus-metrics',
+  'prometheus-alerts',
   'uptime-monitors',
   'uptime-status',
   'uptime-notifications',
