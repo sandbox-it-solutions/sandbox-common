@@ -53,7 +53,7 @@
   },
   "dependencies": {
     "@openfga/sdk": "^0.8.0",
-    "bullmq": "^5.0.0",
+    "bullmq": "^5.76.2",
     "ioredis": "^5.0.0",
     "nestjs-cls": "^6.0.0",
     "nestjs-pino": "^4.0.0",
