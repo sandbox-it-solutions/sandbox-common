@@ -110,6 +110,38 @@ export class OpenFGAService implements OnModuleInit, IPermissionChecker {
     }
   }
 
+  /**
+   * Resolves access for a `feature:<key>` object. Mirrors `resolveAccess`
+   * but checks against the `feature` type so consumers using
+   * `@RequireFeaturePermission` from fga-engine 0.5.0+ work when this
+   * service is aliased into the FgaEngineOpenFGAService injection token.
+   * Cascade from feature.parent is the model's job.
+   */
+  async resolveFeatureAccess(
+    userId: string,
+    featureKey: string,
+  ): Promise<AccessLevel> {
+    if (!this.client) return 'none';
+
+    try {
+      for (const { relation, level } of CHECK_RELATIONS) {
+        const result = await this.client.check({
+          user: `user:${userId}`,
+          relation,
+          object: `feature:${featureKey}`,
+        });
+        if (result.allowed) return level;
+      }
+      return 'none';
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `OpenFGA resolveFeatureAccess failed: user=${userId} feature=${featureKey}: ${message}`,
+      );
+      return 'none';
+    }
+  }
+
   async listUserAreas(userId: string): Promise<Record<string, AccessLevel>> {
     if (!this.client) return {};
 
