@@ -1,4 +1,4 @@
-// @ai-generated — GitHub Copilot (Claude Opus 4.6)
+// @ai-generated — GitHub Copilot (Claude Opus 4.6); modified — Claude Opus 4.7 — task: bypass GlobalAuthGuard so Prometheus scrape stays unauthenticated
 /**
  * Copyright (c) 2026 SandBox
  * Licensed under the MIT License.
@@ -7,6 +7,7 @@
 
 import { Controller, Get } from '@nestjs/common';
 import { register, collectDefaultMetrics, Counter, Histogram } from 'prom-client';
+import { Public } from '../decorators/public.decorator';
 
 let defaultsCollected = false;
 
@@ -66,6 +67,10 @@ export const wsConnectionsTotal = getOrCreate(
 
 @Controller('metrics')
 export class MetricsController {
+  // Why: APP_GUARD GlobalAuthGuard otherwise rejects Prometheus' unauthenticated
+  // scrape — and the docker healthcheck on some services pings this endpoint,
+  // causing the container to flap unhealthy.
+  @Public()
   @Get()
   async getMetrics(): Promise<string> {
     ensureDefaults();
