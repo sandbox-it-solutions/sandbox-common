@@ -74,8 +74,14 @@ export class MemoryCacheProvider implements ICacheProvider {
   }
 
   async keys(pattern: string): Promise<string[]> {
+    // Escape regex specials FIRST, then re-interpret only `*` and `?`
+    // as glob wildcards. Prevents ReDoS via attacker-controlled
+    // patterns such as `(.+)+` that would otherwise compile to a
+    // catastrophic-backtracking regex. Mirrors Redis KEYS glob
+    // semantics.
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(
-      '^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$',
+      '^' + escaped.replace(/\\\*/g, '.*').replace(/\\\?/g, '.') + '$',
     );
     return Array.from(this.store.keys()).filter((k) => regex.test(k));
   }
