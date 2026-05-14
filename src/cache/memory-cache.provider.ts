@@ -80,6 +80,9 @@ export class MemoryCacheProvider implements ICacheProvider {
     // catastrophic-backtracking regex. Mirrors Redis KEYS glob
     // semantics.
     const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
+    // Safe: input is fully escaped above; only literal `\*`/`\?` (from glob) are
+    // re-interpreted as regex `.*`/`.`, so no attacker-controlled regex specials reach the engine.
     const regex = new RegExp(
       '^' + escaped.replace(/\\\*/g, '.*').replace(/\\\?/g, '.') + '$',
     );
